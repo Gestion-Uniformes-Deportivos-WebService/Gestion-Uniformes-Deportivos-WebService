@@ -1,15 +1,19 @@
 from fastapi import FastAPI
+from app.api.router import router
 
+
+# Crea la aplicación FastAPI
 app = FastAPI(
-    title="Gestion Uniformes Deportivos",
-    description="Web Service para la gestión de uniformes deportivos",
+    title="Mi API de Productos",
+    description="API REST con arquitectura de capas",
     version="1.0.0"
 )
 
-@app.get("/")
-def inicio():
-    return {"mensaje": "Web Service funcionando correctamente"}
+# Registra el router de productos
+app.include_router(router)
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok"}
+
+# Endpoint raíz de bienvenida
+@app.get("/")
+def root():
+    return {"message": "¡API funcionando! 🚀"}
