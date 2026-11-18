@@ -4,12 +4,21 @@
 # ─────────────────────────────────────────────────────────────
 
 from app.core.excepciones import (
+    EntradaInvalidaError,
     ErrorRepositorio,
     ReglaNegocioError,
     ServicioNoDisponibleError,
+    SinDatosError,
+)
+from app.domain.parametro import (
+    Parametro,
+    ParametroCreate,
+    ParametroResponse,
+    ParametrosModuloResponse,
+    validar_codigo_modulo,
 )
 from app.domain.parametro import Parametro, ParametroCreate, ParametroResponse
-from app.repository.parametro_repository import ParametroRepository
+from app.repositories.parametro_repository import ParametroRepository
 
 
 class ParametroService:
@@ -43,3 +52,30 @@ class ParametroService:
             raise ServicioNoDisponibleError("No fue posible registrar el parámetro")
 
         return ParametroResponse(**creado.to_response())
+
+    def consultar_por_modulo(self, modulo: str) -> ParametrosModuloResponse:
+        # Paso 1: validar el formato del código (regla del dominio)
+        try:
+            modulo = validar_codigo_modulo(modulo)
+        except ValueError as e:
+            raise EntradaInvalidaError(str(e))  # → 400
+
+        # Paso 2: consultar al repositorio; si falla el almacenamiento → 503
+        try:
+            encontrados = self.repo.obtener_por_modulo(modulo)
+        except ErrorRepositorio:
+            raise ServicioNoDisponibleError("No fue posible consultar los parámetros")
+
+        # Sin datos: 200 con success=false y el listado vacío
+        if not encontrados:
+            raise SinDatosError(
+                "El módulo no tiene parámetros configurados",
+                {"modulo": modulo, "total": 0, "parametros": []},
+            )
+
+        # Paso 3: devolver el listado con los valores actuales
+        return ParametrosModuloResponse(
+            modulo=modulo,
+            total=len(encontrados),
+            parametros=[p.to_item() for p in encontrados],
+        )

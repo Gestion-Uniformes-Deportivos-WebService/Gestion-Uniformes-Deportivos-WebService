@@ -117,3 +117,29 @@ class Parametro:
             "nombre": self.nombre,
             "valor": self.valor,
         }
+    # Versión resumida para el listado por módulo
+    def to_item(self) -> dict:
+        return {"idParametro": self.id, "nombre": self.nombre, "valor": self.valor}
+    
+# ── Validación del código de módulo (reutilizable en consultas) ──
+def validar_codigo_modulo(codigo: str) -> str:
+    """Normaliza y valida el formato MOD-NN. Lanza ValueError si es inválido."""
+    codigo = (codigo or "").strip().upper()
+    if not PATRON_MODULO.match(codigo):
+        raise ValueError("Código de módulo no válido. Formato esperado: MOD-NN")
+    return codigo
+
+
+# ── Schemas de SALIDA de HU-035 ───────────────────────────────
+class ParametroItem(BaseModel):
+    """Un parámetro dentro del listado (sin repetir el módulo)."""
+    idParametro: int
+    nombre: str
+    valor: str
+
+
+class ParametrosModuloResponse(BaseModel):
+    modulo: str
+    total: int
+    parametros: list[ParametroItem]
+
