@@ -4,6 +4,12 @@
 # ─────────────────────────────────────────────────────────────
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+
+from app.api.router import router
+from app.api.diseno_router import router as diseno_router
+from app.core.responses import manejar_error_dominio, manejar_validacion
+from app.domain.errores import ErrorDominio
 
 from app.api.parametro_router import router as parametro_router
 from app.core.manejadores import registrar_manejadores

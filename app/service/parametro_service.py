@@ -9,7 +9,7 @@ from app.core.excepciones import (
     ServicioNoDisponibleError,
 )
 from app.domain.parametro import Parametro, ParametroCreate, ParametroResponse
-from app.repositories.parametro_repository import ParametroRepository
+from app.repository.parametro_repository import ParametroRepository
 
 
 class ParametroService:

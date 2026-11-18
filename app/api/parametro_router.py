@@ -7,7 +7,7 @@ from fastapi import APIRouter, status
 
 from app.core.respuesta import RespuestaApi, respuesta_ok
 from app.domain.parametro import ParametroCreate, ParametroResponse
-from app.repositories.parametro_repository import parametro_repository
+from app.repository.parametro_repository import parametro_repository
 from app.service.parametro_service import ParametroService
 
 router = APIRouter(prefix="/api/parametros", tags=["Parámetros (MOD-08)"])
