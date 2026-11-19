@@ -2,9 +2,7 @@ from app.domain.diseno import (
     DecisionArte, DisenoAprobacionResponse,
     DisenoDecisionRequest, DisenoResolucionResponse,
 )
-from app.domain.errores import (
-    RecursoNoEncontradoError, ReglaNegocioError, ValidacionDominioError,
-)
+from app.domain.errores import RecursoNoEncontradoError, ReglaNegocioError
 from app.repositories.diseno_repo import DisenoRepository
 
 
@@ -28,15 +26,11 @@ class DisenoService:
                 {"idPedido": diseno.id_pedido, "idDisenoPendiente": pendiente.id},
             )
 
-        diseno.enviar_a_aprobacion()   # reglas del Domain
+        diseno.enviar_a_aprobacion()
         self.repo.guardar(diseno)
-
-        # La notificación al cliente se simula
         return DisenoAprobacionResponse(
-            idDiseno=diseno.id,
-            idPedido=diseno.id_pedido,
-            estado=diseno.estado,
-            clienteNotificado=True,
+            idDiseno=diseno.id, idPedido=diseno.id_pedido,
+            estado=diseno.estado, clienteNotificado=True,
         )
 
     def resolver_aprobacion(self, id_diseno: int,
@@ -48,16 +42,14 @@ class DisenoService:
             )
 
         if datos.decision == DecisionArte.APROBADO:
-            diseno.aprobar()   # reglas del Domain (RN-23, RN-21)
+            diseno.aprobar()
+            observaciones = None
         else:
-            # El rechazo se implementa en la HU-020
-            raise ValidacionDominioError(
-                "El rechazo de arte se habilita con la HU-020", {"idDiseno": id_diseno}
-            )
+            diseno.rechazar(datos.observaciones)
+            observaciones = diseno.observaciones
 
         self.repo.guardar(diseno)
         return DisenoResolucionResponse(
-            idDiseno=diseno.id,
-            idPedido=diseno.id_pedido,
-            estado=diseno.estado,
+            idDiseno=diseno.id, idPedido=diseno.id_pedido,
+            estado=diseno.estado, observaciones=observaciones,
         )

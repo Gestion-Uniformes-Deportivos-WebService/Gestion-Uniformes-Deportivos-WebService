@@ -65,6 +65,20 @@ class Diseno:
             )
         self.estado = EstadoDiseno.DISENO_APROBADO
 
+    def rechazar(self, observaciones: Optional[str]) -> None:
+        # RN-22: un diseño rechazado requiere observaciones
+        if not observaciones or not observaciones.strip():
+            raise ValidacionDominioError(
+                "Un diseño rechazado requiere observaciones", {"idDiseno": self.id}
+            )
+        if self.estado != EstadoDiseno.PENDIENTE_APROBACION:
+            raise ReglaNegocioError(
+                "El diseño no está pendiente de aprobación",
+                {"idDiseno": self.id, "estado": self.estado.value},
+            )
+        self.estado = EstadoDiseno.RECHAZADO
+        self.observaciones = observaciones.strip()
+
 
 class DisenoAprobacionResponse(BaseModel):
     idDiseno: int
