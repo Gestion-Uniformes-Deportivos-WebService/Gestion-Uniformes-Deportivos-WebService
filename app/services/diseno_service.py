@@ -1,4 +1,7 @@
-from app.domain.diseno import DisenoAprobacionResponse
+from app.domain.diseno import (
+    DecisionArte, DisenoAprobacionResponse,
+    DisenoDecisionRequest, DisenoResolucionResponse,
+)
 from app.domain.errores import RecursoNoEncontradoError, ReglaNegocioError
 from app.repositories.diseno_repo import DisenoRepository
 
@@ -23,13 +26,30 @@ class DisenoService:
                 {"idPedido": diseno.id_pedido, "idDisenoPendiente": pendiente.id},
             )
 
-        diseno.enviar_a_aprobacion()   # reglas del Domain
+        diseno.enviar_a_aprobacion()
         self.repo.guardar(diseno)
-
-        # La notificación al cliente se simula; la integración real queda fuera del alcance
         return DisenoAprobacionResponse(
-            idDiseno=diseno.id,
-            idPedido=diseno.id_pedido,
-            estado=diseno.estado,
-            clienteNotificado=True,
+            idDiseno=diseno.id, idPedido=diseno.id_pedido,
+            estado=diseno.estado, clienteNotificado=True,
+        )
+
+    def resolver_aprobacion(self, id_diseno: int,
+                            datos: DisenoDecisionRequest) -> DisenoResolucionResponse:
+        diseno = self.repo.obtener_por_id(id_diseno)
+        if not diseno:
+            raise RecursoNoEncontradoError(
+                "El diseño indicado no existe", {"idDiseno": id_diseno}
+            )
+
+        if datos.decision == DecisionArte.APROBADO:
+            diseno.aprobar()
+            observaciones = None
+        else:
+            diseno.rechazar(datos.observaciones)
+            observaciones = diseno.observaciones
+
+        self.repo.guardar(diseno)
+        return DisenoResolucionResponse(
+            idDiseno=diseno.id, idPedido=diseno.id_pedido,
+            estado=diseno.estado, observaciones=observaciones,
         )
