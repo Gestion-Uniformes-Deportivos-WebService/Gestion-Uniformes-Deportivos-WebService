@@ -3,10 +3,10 @@
 # Los errores los convierte app/core/manejadores.py
 # ─────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Path, status
 
+from app.domain.pedido import CotizacionResponse, PedidoCreate, PedidoResponse
 from app.core.respuesta import RespuestaApi, respuesta_ok
-from app.domain.pedido import PedidoCreate, PedidoResponse
 from app.repositories.cliente_repository import cliente_repository
 from app.repositories.parametro_repository import parametro_repository
 from app.repositories.pedido_repository import pedido_repository
@@ -36,3 +36,18 @@ def registrar_pedido(datos: PedidoCreate):
     """Registra y confirma un pedido de uniformes en estado PENDIENTE_ANTICIPO."""
     creado = service.registrar(datos)
     return respuesta_ok("Pedido registrado exitosamente", creado)
+
+# ── GET /api/pedidos/{id}/cotizacion — HU-002 ─────────────────
+@router.get(
+    "/{id}/cotizacion",
+    response_model=RespuestaApi[CotizacionResponse],
+    responses={
+        400: {"description": "Identificador de pedido no numérico"},
+        404: {"description": "El pedido consultado no existe"},
+        503: {"description": "Falla del almacenamiento"},
+    },
+)
+def cotizar_pedido(id: str = Path(..., description="ID del pedido a cotizar")):
+    """Calcula el costo total del pedido con el desglose de anticipo (50%) y saldo (50%)."""
+    cotizacion = service.cotizar(id)
+    return respuesta_ok("Cotización calculada exitosamente", cotizacion)
