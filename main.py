@@ -10,7 +10,9 @@ from app.api.router import router
 from app.api.diseno_router import router as diseno_router
 from app.core.responses import manejar_error_dominio, manejar_validacion
 from app.api.parametro_router import router as parametro_router
+from app.api.cliente_router import router as cliente_router
 from app.domain.errores import ErrorDominio
+from app.core.manejadores import registrar_manejadores
 
 app = FastAPI(
     title="API Gestión de Pedidos de Uniformes Deportivos",
@@ -20,10 +22,12 @@ app = FastAPI(
 
 app.add_exception_handler(ErrorDominio, manejar_error_dominio)
 app.add_exception_handler(RequestValidationError, manejar_validacion)
+registrar_manejadores(app)
 
 app.include_router(router)
 app.include_router(diseno_router)
 app.include_router(parametro_router)
+app.include_router(cliente_router)
 
 
 @app.get("/")
