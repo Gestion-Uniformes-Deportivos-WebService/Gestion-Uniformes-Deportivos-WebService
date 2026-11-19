@@ -18,12 +18,12 @@ class ParametroRepository:
     def _seed(self):
         """Parámetros iniciales (ids 1-6). El siguiente registro recibe el id 7."""
         iniciales = [
-            ("MOD-01", "PORCENTAJE_ANTICIPO", "50"),
-            ("MOD-01", "DIAS_VIGENCIA_COTIZACION", "15"),
+            ("MOD-02", "DIAS_VIGENCIA_COTIZACION", "15"),
             ("MOD-03", "DIAS_PRODUCCION_ESTIMADO", "10"),
             ("MOD-05", "MONEDA", "COP"),
             ("MOD-05", "IVA_PORCENTAJE", "19"),
             ("MOD-08", "ZONA_HORARIA", "America/Bogota"),
+            ("MOD-01", "PORCENTAJE_ANTICIPO", "50"),
         ]
         for modulo, nombre, valor in iniciales:
             self.crear(modulo, nombre, valor)
@@ -41,6 +41,10 @@ class ParametroRepository:
         self._datos.append(nuevo)
         self._siguiente_id += 1
         return nuevo
+
+    def obtener_por_modulo(self, modulo: str) -> list[Parametro]:
+        """Devuelve los parámetros de un módulo, ordenados por id."""
+        return [p for p in self._datos if p.modulo == modulo]
 
 
 # Instancia única compartida (Singleton simple)

@@ -39,3 +39,8 @@ class ServicioNoDisponibleError(ErrorAplicacion):
 
 class ErrorRepositorio(Exception):
     """Lo lanza el repositorio cuando el almacenamiento falla."""
+
+class SinDatosError(ErrorAplicacion):
+    """Consulta válida pero sin resultados: HTTP 200 con success=false (HU-035)."""
+
+    codigo_http = 200
