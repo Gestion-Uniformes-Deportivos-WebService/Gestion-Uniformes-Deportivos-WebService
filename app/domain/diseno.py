@@ -12,6 +12,11 @@ class EstadoDiseno(str, Enum):
     RECHAZADO = "RECHAZADO"
 
 
+class DecisionArte(str, Enum):
+    APROBADO = "APROBADO"
+    RECHAZADO = "RECHAZADO"
+
+
 class Diseno:
     """Entidad del dominio: arte de un pedido."""
 
@@ -41,9 +46,40 @@ class Diseno:
             )
         self.estado = EstadoDiseno.PENDIENTE_APROBACION
 
+    def aprobar(self) -> None:
+        # RN-23: no se aprueba un diseño sin archivo de arte cargado
+        if not self.archivo_arte:
+            raise ValidacionDominioError(
+                "No se puede aprobar un diseño sin archivo de arte cargado",
+                {"idDiseno": self.id},
+            )
+        if self.estado == EstadoDiseno.DISENO_APROBADO:
+            raise ReglaNegocioError(
+                "El diseño ya fue aprobado", {"idDiseno": self.id}
+            )
+        # RN-21: solo se puede aprobar un diseño pendiente de aprobación
+        if self.estado != EstadoDiseno.PENDIENTE_APROBACION:
+            raise ReglaNegocioError(
+                "El diseño no está pendiente de aprobación",
+                {"idDiseno": self.id, "estado": self.estado.value},
+            )
+        self.estado = EstadoDiseno.DISENO_APROBADO
+
 
 class DisenoAprobacionResponse(BaseModel):
     idDiseno: int
     idPedido: int
     estado: EstadoDiseno
     clienteNotificado: bool
+
+
+class DisenoDecisionRequest(BaseModel):
+    decision: DecisionArte
+    observaciones: Optional[str] = None
+
+
+class DisenoResolucionResponse(BaseModel):
+    idDiseno: int
+    idPedido: int
+    estado: EstadoDiseno
+    observaciones: Optional[str] = None
