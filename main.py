@@ -1,3 +1,8 @@
+# ─────────────────────────────────────────────────────────────
+# PUNTO DE ENTRADA — ejecutar desde la raíz del proyecto:
+#   uvicorn app.main:app --reload
+# ─────────────────────────────────────────────────────────────
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 
@@ -21,4 +26,13 @@ app.include_router(diseno_router)
 
 @app.get("/")
 def root():
-    return {"message": "¡API funcionando! 🚀"}
+    return {
+        "mensaje": "API corriendo correctamente 🚀",
+        "docs": "http://127.0.0.1:8000/docs",
+        "version": "1.0.0",
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
