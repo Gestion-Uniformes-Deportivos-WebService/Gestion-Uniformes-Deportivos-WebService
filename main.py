@@ -9,6 +9,7 @@ from fastapi.exceptions import RequestValidationError
 from app.api.router import router
 from app.api.diseno_router import router as diseno_router
 from app.core.responses import manejar_error_dominio, manejar_validacion
+from app.api.parametro_router import router as parametro_router
 from app.domain.errores import ErrorDominio
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_exception_handler(RequestValidationError, manejar_validacion)
 
 app.include_router(router)
 app.include_router(diseno_router)
+app.include_router(parametro_router)
 
 
 @app.get("/")
