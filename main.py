@@ -13,6 +13,7 @@ from app.api.parametro_router import router as parametro_router
 from app.api.cliente_router import router as cliente_router
 from app.domain.errores import ErrorDominio
 from app.core.manejadores import registrar_manejadores
+from app.api.pedido_router import router as pedido_router
 
 app = FastAPI(
     title="API Gestión de Pedidos de Uniformes Deportivos",
@@ -28,6 +29,7 @@ app.include_router(router)
 app.include_router(diseno_router)
 app.include_router(parametro_router)
 app.include_router(cliente_router)
+app.include_router(pedido_router)
 
 
 @app.get("/")

@@ -11,10 +11,14 @@ class ErrorAplicacion(Exception):
 
     codigo_http: int = 500
 
-    def __init__(self, mensaje: str, data: dict | None = None):
+    def __init__(self, mensaje: str, data: dict | None = None,
+                 codigo_http: int | None = None):
         super().__init__(mensaje)
         self.mensaje = mensaje
         self.data = data if data is not None else {}
+        # Permite que una HU use otro código (ej. 422) sin crear otra clase
+        if codigo_http is not None:
+            self.codigo_http = codigo_http
 
 
 class EntradaInvalidaError(ErrorAplicacion):

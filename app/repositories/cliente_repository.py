@@ -46,6 +46,10 @@ class ClienteRepository:
         self._datos.append(nuevo)
         self._siguiente_id += 1
         return nuevo
+    
+    def obtener_por_id(self, id: int) -> Optional[Cliente]:
+        """Busca un cliente por su id (lo usa MOD-01 para validar el pedido)."""
+        return next((c for c in self._datos if c.id == id), None)
 
 
 # Instancia única compartida (Singleton simple)
