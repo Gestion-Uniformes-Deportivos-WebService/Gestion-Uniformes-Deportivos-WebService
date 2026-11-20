@@ -16,6 +16,7 @@ from app.domain.cliente import Cliente
 CANTIDAD_MINIMA_DEFAULT = 6
 ESTADO_PENDIENTE_ANTICIPO = "PENDIENTE_ANTICIPO"
 COSTO_UNITARIO_DEFAULT = 45_000  # tarifa base por unidad, si no hay parámetro
+ESTADOS_NO_MODIFICABLES = ("EN_PRODUCCION", "LISTO_PARA_DESPACHO", "ENTREGADO") # RN-03: en estos estados el pedido ya no puede modificarse
 
 
 
@@ -107,6 +108,13 @@ class Pedido:
     def calcular_costo_total(self, costo_unitario: int) -> int:
             return self.cantidad * costo_unitario
 
+        # RN-03: un pedido no puede modificarse una vez esté en producción
+    def validar_modificable(self) -> None:
+        if self.estado in ESTADOS_NO_MODIFICABLES:
+            raise ValueError(
+                f"El pedido no puede modificarse porque está en estado {self.estado}"
+            )
+
     def to_response(self) -> dict:
         return {
             "idPedido": self.id,
@@ -123,3 +131,4 @@ def validar_id_pedido(valor: str) -> int:
     if not valor.isdigit() or int(valor) <= 0:
         raise ValueError("Identificador de pedido no válido. Debe ser numérico")
     return int(valor)
+
