@@ -15,6 +15,8 @@ from app.domain.cliente import Cliente
 
 CANTIDAD_MINIMA_DEFAULT = 6
 ESTADO_PENDIENTE_ANTICIPO = "PENDIENTE_ANTICIPO"
+COSTO_UNITARIO_DEFAULT = 45_000  # tarifa base por unidad, si no hay parámetro
+
 
 
 # ── Schemas de ENTRADA ────────────────────────────────────────
@@ -48,6 +50,14 @@ class PedidoResponse(BaseModel):
     estado: str
     esquemaPago: str
 
+class CotizacionResponse(BaseModel):
+    idPedido: int
+    cantidad: int
+    costoUnitario: int
+    costoTotal: int
+    anticipo: int
+    saldoFinal: int
+
 
 # ── Objeto de valor: esquema de pago (RN-14) ──────────────────
 @dataclass(frozen=True)
@@ -58,6 +68,13 @@ class EsquemaDePago:
     def validar(self) -> None:
         if self.anticipo != 50 or self.saldo != 50:
             raise ValueError("El pago debe dividirse en 50% de anticipo y 50% de saldo")
+
+        # RN-50: el anticipo y el saldo se recalculan cuando cambia el valor total
+    def recalcular(self, costo_total: int) -> tuple[int, int]:
+        self.validar()  # RN-14: siempre 50/50
+        anticipo = costo_total * self.anticipo // 100
+        saldo = costo_total - anticipo  # el saldo absorbe cualquier redondeo
+        return anticipo, saldo
 
     def __str__(self) -> str:
         return f"{self.anticipo}/{self.saldo}"
@@ -87,6 +104,9 @@ class Pedido:
                 f"El pedido no cumple la cantidad mínima de {minimo} unidades"
             )
 
+    def calcular_costo_total(self, costo_unitario: int) -> int:
+            return self.cantidad * costo_unitario
+
     def to_response(self) -> dict:
         return {
             "idPedido": self.id,
@@ -95,3 +115,11 @@ class Pedido:
             "estado": self.estado,
             "esquemaPago": str(self.esquema_pago),
         }
+    
+    # ── Validación del id de pedido recibido por la ruta ─────────
+def validar_id_pedido(valor: str) -> int:
+    """El id llega como texto en la URL; debe ser un número entero positivo."""
+    valor = (valor or "").strip()
+    if not valor.isdigit() or int(valor) <= 0:
+        raise ValueError("Identificador de pedido no válido. Debe ser numérico")
+    return int(valor)
