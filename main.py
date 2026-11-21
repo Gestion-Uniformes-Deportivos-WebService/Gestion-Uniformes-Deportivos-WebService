@@ -13,6 +13,7 @@ from app.api.parametro_router import router as parametro_router
 from app.api.cliente_router import router as cliente_router
 from app.api.pedido_router import router as pedido_router
 from app.api.ficha_tecnica_router import router as ficha_tecnica_router
+from app.api.inventario_router import router as inventario_router
 
 from app.core.responses import manejar_error_dominio, manejar_validacion
 from app.core.manejadores import registrar_manejadores
@@ -38,7 +39,7 @@ app.include_router(parametro_router)
 app.include_router(cliente_router)
 app.include_router(pedido_router)
 app.include_router(ficha_tecnica_router)
-
+app.include_router(inventario_router)
 
 @app.get("/")
 def root():
