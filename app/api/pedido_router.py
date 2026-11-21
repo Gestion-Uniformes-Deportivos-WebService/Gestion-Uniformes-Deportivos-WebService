@@ -12,6 +12,7 @@ from app.repositories.parametro_repository import parametro_repository
 from app.repositories.pedido_repository import pedido_repository
 from app.services.pedido_service import PedidoService
 from app.domain.estado_pedido import EstadoPedidoResponse
+from app.repositories.pago_repository import pago_repository
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos (MOD-01)"])
 
@@ -19,6 +20,7 @@ service = PedidoService(
     repo=pedido_repository,
     clientes=cliente_repository,
     parametros=parametro_repository,
+    pagos=pago_repository,
 )
 
 
@@ -65,5 +67,5 @@ def cotizar_pedido(id: str = Path(..., description="ID del pedido a cotizar")):
 )
 def consultar_estado_pedido(id: str = Path(..., description="ID del pedido")):
     """Retorna la etapa actual del pedido: estado, pago, producción y despacho."""
-    estado = service.consultar_estado(id)
-    return respuesta_ok("Consulta de estado exitosa", estado)
+    estado, mensaje = service.consultar_estado(id)
+    return respuesta_ok(mensaje, estado)
