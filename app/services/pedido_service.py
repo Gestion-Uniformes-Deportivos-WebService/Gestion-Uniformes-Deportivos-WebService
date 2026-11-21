@@ -28,16 +28,20 @@ from app.repositories.cliente_repository import ClienteRepository
 from app.repositories.parametro_repository import ParametroRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.domain.estado_pedido import EstadoPedido, EstadoPedidoResponse
+from app.domain.pago import ResumenPago
+from app.repositories.pago_repository import PagoRepository
 
 
 class PedidoService:
 
     def __init__(self, repo: PedidoRepository,
                  clientes: ClienteRepository,
-                 parametros: ParametroRepository):
+                 parametros: ParametroRepository,
+                 pagos: PagoRepository):
         self.repo = repo
         self.clientes = clientes      # MOD-02: validación de cliente
         self.parametros = parametros  # MOD-08: parámetros del pedido
+        self.pagos = pagos            # MOD-03: pagos del pedido
 
     def _cantidad_minima(self) -> int:
         """Lee CANTIDAD_MINIMA_PEDIDO de MOD-01; si no existe, usa 6 (RN-01)."""
@@ -131,25 +135,27 @@ class PedidoService:
             anticipo=anticipo,
             saldoFinal=saldo,
         )
-    def consultar_estado(self, id_texto: str) -> EstadoPedidoResponse:
+    def consultar_estado(self, id_texto: str) -> tuple[EstadoPedidoResponse, str]:
+        """Devuelve (data, mensaje) con el estado y el avance del pago."""
         # Paso 1: el id del pedido debe ser numérico → 400
         try:
             id_pedido = validar_id_pedido(id_texto)
         except ValueError as e:
             raise EntradaInvalidaError(str(e))
 
-        # Paso 2: consultar el pedido; si falla el almacenamiento → 503
+        # Paso 2: consultar el pedido y sus pagos; si falla el almacenamiento → 503
         try:
             pedido = self.repo.obtener_por_id(id_pedido)
+            if pedido is None:
+                raise RecursoNoEncontradoError(
+                    "El pedido consultado no existe", {"idPedido": id_pedido}
+                )
+            resumen = ResumenPago(self.calcular_total(pedido),
+                                  self.pagos.total_pagado(pedido.id))
         except ErrorRepositorio:
             raise ServicioNoDisponibleError("No fue posible consultar el estado del pedido")
 
-        if pedido is None:
-            raise RecursoNoEncontradoError(
-                "El pedido consultado no existe", {"idPedido": id_pedido}
-            )
-
-        # Paso 3 — RN-06: obtener pago, producción y despacho según el estado
+        # Paso 3 — RN-06: pago, producción y despacho según el estado
         try:
             detalle = EstadoPedido.detalle(pedido.estado)
         except ValueError as e:
@@ -157,4 +163,13 @@ class PedidoService:
                 str(e), {"idPedido": id_pedido, "estado": pedido.estado}, codigo_http=404
             )
 
-        return EstadoPedidoResponse(idPedido=pedido.id, estado=pedido.estado, **detalle)
+        # Mientras espera el anticipo, el campo pago refleja los abonos reales
+        if pedido.estado == ESTADO_PENDIENTE_ANTICIPO:
+            detalle["pago"] = resumen.etapa_pago()
+
+        estado = EstadoPedidoResponse(idPedido=pedido.id, estado=pedido.estado, **detalle)
+        return estado, f"Consulta de estado exitosa. {resumen.mensaje_abono()}"
+
+    def calcular_total(self, pedido: Pedido) -> int:
+        """Valor total del pedido (cantidad × costo unitario)."""
+        return pedido.calcular_costo_total(self._costo_unitario())
