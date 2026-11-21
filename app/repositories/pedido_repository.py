@@ -28,6 +28,7 @@ class PedidoRepository:
         self._datos.append(nuevo)
         self._siguiente_id += 1
         return nuevo
+    
 
 
 # Instancia única compartida (Singleton simple)

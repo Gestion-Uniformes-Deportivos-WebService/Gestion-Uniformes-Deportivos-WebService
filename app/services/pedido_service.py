@@ -27,6 +27,7 @@ from app.domain.pedido import (
 from app.repositories.cliente_repository import ClienteRepository
 from app.repositories.parametro_repository import ParametroRepository
 from app.repositories.pedido_repository import PedidoRepository
+from app.domain.estado_pedido import EstadoPedido, EstadoPedidoResponse
 
 
 class PedidoService:
@@ -130,3 +131,30 @@ class PedidoService:
             anticipo=anticipo,
             saldoFinal=saldo,
         )
+    def consultar_estado(self, id_texto: str) -> EstadoPedidoResponse:
+        # Paso 1: el id del pedido debe ser numérico → 400
+        try:
+            id_pedido = validar_id_pedido(id_texto)
+        except ValueError as e:
+            raise EntradaInvalidaError(str(e))
+
+        # Paso 2: consultar el pedido; si falla el almacenamiento → 503
+        try:
+            pedido = self.repo.obtener_por_id(id_pedido)
+        except ErrorRepositorio:
+            raise ServicioNoDisponibleError("No fue posible consultar el estado del pedido")
+
+        if pedido is None:
+            raise RecursoNoEncontradoError(
+                "El pedido consultado no existe", {"idPedido": id_pedido}
+            )
+
+        # Paso 3 — RN-06: obtener pago, producción y despacho según el estado
+        try:
+            detalle = EstadoPedido.detalle(pedido.estado)
+        except ValueError as e:
+            raise ReglaNegocioError(
+                str(e), {"idPedido": id_pedido, "estado": pedido.estado}, codigo_http=404
+            )
+
+        return EstadoPedidoResponse(idPedido=pedido.id, estado=pedido.estado, **detalle)

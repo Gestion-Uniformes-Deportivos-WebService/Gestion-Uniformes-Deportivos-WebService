@@ -11,6 +11,7 @@ from app.repositories.cliente_repository import cliente_repository
 from app.repositories.parametro_repository import parametro_repository
 from app.repositories.pedido_repository import pedido_repository
 from app.services.pedido_service import PedidoService
+from app.domain.estado_pedido import EstadoPedidoResponse
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos (MOD-01)"])
 
@@ -51,3 +52,18 @@ def cotizar_pedido(id: str = Path(..., description="ID del pedido a cotizar")):
     """Calcula el costo total del pedido con el desglose de anticipo (50%) y saldo (50%)."""
     cotizacion = service.cotizar(id)
     return respuesta_ok("Cotización calculada exitosamente", cotizacion)
+
+# ── GET /api/pedidos/{id}/estado — HU-005 ─────────────────────
+@router.get(
+    "/{id}/estado",
+    response_model=RespuestaApi[EstadoPedidoResponse],
+    responses={
+        400: {"description": "Identificador de pedido no numérico"},
+        404: {"description": "El pedido consultado no existe"},
+        503: {"description": "Falla del almacenamiento"},
+    },
+)
+def consultar_estado_pedido(id: str = Path(..., description="ID del pedido")):
+    """Retorna la etapa actual del pedido: estado, pago, producción y despacho."""
+    estado = service.consultar_estado(id)
+    return respuesta_ok("Consulta de estado exitosa", estado)
