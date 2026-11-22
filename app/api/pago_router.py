@@ -5,8 +5,13 @@
 
 from fastapi import APIRouter, status
 
+from app.domain.pago import (
+    PagoAnticipoCreate,
+    PagoResponse,
+    PagoSaldoCreate,
+    PagoSaldoResponse,
+)
 from app.core.respuesta import RespuestaApi, respuesta_ok
-from app.domain.pago import PagoAnticipoCreate, PagoResponse
 from app.repositories.cliente_repository import cliente_repository
 from app.repositories.pago_repository import pago_repository
 from app.repositories.parametro_repository import parametro_repository
@@ -42,4 +47,20 @@ service = PagoService(
 def registrar_anticipo(datos: PagoAnticipoCreate):
     """Registra un abono al anticipo (50%) del pedido. Los abonos se acumulan."""
     pago, mensaje = service.registrar_anticipo(datos)
+    return respuesta_ok(mensaje, pago)
+
+# ── POST /api/pagos/saldo — HU-012 ────────────────────────────
+@router.post(
+    "/saldo",
+    response_model=RespuestaApi[PagoSaldoResponse],
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        400: {"description": "Datos de entrada inválidos"},
+                422: {"description": "El monto supera lo pendiente, pedido inexistente o ya pagado"},
+        503: {"description": "Falla del almacenamiento"},
+    },
+)
+def registrar_saldo(datos: PagoSaldoCreate):
+    """Registra el saldo del pedido. Admite abonos parciales sin superar lo pendiente."""
+    pago, mensaje = service.registrar_saldo(datos)
     return respuesta_ok(mensaje, pago)
