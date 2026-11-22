@@ -5,9 +5,11 @@
 # ─────────────────────────────────────────────────────────────
 
 from app.core.excepciones import (
+    EntradaInvalidaError,
     ErrorRepositorio,
     ReglaNegocioError,
     ServicioNoDisponibleError,
+    SinDatosError,
 )
 from app.domain.pago import (
     ESTADO_PAGO_ABONADO,
@@ -21,10 +23,12 @@ from app.domain.pago import (
     PagoSaldoCreate,
     PagoSaldoResponse,
     ResumenPago,
+    PazYSalvoResponse,
 )
 from app.repositories.pago_repository import PagoRepository
 from app.repositories.pedido_repository import PedidoRepository
 from app.services.pedido_service import PedidoService
+from app.domain.pedido import validar_id_pedido
 
 
 class PagoService:
@@ -167,6 +171,45 @@ class PagoService:
             estadoPedido=ESTADO_PEDIDO_PAGADO_TOTAL,
             saldoPendiente=resumen_despues.pendiente,
         )    
+        
+    def consultar_paz_y_salvo(self, id_texto: str) -> PazYSalvoResponse:
+            """Verifica si el pedido está a paz y salvo (saldo pendiente = 0)."""
+            # Paso 1: el id del pedido debe ser numérico → 400
+            try:
+                id_pedido = validar_id_pedido(id_texto)
+            except ValueError as e:
+                raise EntradaInvalidaError(str(e))
+    
+            # Paso 2: consultar el balance de cobros; si falla el almacenamiento → 503
+            try:
+                pedido = self.pedidos.obtener_por_id(id_pedido)
+                if pedido is None:
+                    # Consulta sin datos: HTTP 200 con success=false
+                    raise SinDatosError(
+                        "El pedido consultado no existe", {"idPedido": id_pedido}
+                    )
+                total = self.pedido_service.calcular_total(pedido)
+                resumen = ResumenPago(total, self.repo.total_pagado(pedido.id))
+            except ErrorRepositorio:
+                raise ServicioNoDisponibleError(
+                    "No fue posible validar el estado financiero del pedido"
+                )
+    
+            # Paso 3 — RN-16: paz y salvo cuando el saldo pendiente es $0
+            respuesta = PazYSalvoResponse(
+                idPedido=pedido.id,
+                valorTotal=total,
+                totalPagado=resumen.pagado,
+                saldoPendiente=resumen.pendiente,
+                pazYSalvo=pedido.tiene_paz_y_salvo(resumen.pendiente),
+            )
+            if not respuesta.pazYSalvo:
+                raise SinDatosError(
+                    "El pedido no está a paz y salvo: existe saldo pendiente. "
+                    f"{resumen.mensaje_abono()}",
+                    respuesta.model_dump(),
+                )
+            return respuesta
     def registrar_saldo(self, datos: PagoSaldoCreate) -> tuple[PagoSaldoResponse, str]:
         """Registra un pago del saldo (total o parcial). Devuelve (data, mensaje)."""
         try:
@@ -237,3 +280,5 @@ class PagoService:
         titulo = ("Saldo final registrado exitosamente" if completo
                   else "Abono al saldo registrado exitosamente")
         return respuesta, f"{titulo}. {resumen_despues.mensaje_abono()}"
+
+        
