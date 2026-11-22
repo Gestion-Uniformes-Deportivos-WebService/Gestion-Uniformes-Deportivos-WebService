@@ -3,13 +3,14 @@
 # Los errores los convierte app/core/manejadores.py
 # ─────────────────────────────────────────────────────────────
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Path, status
 
 from app.domain.pago import (
     PagoAnticipoCreate,
     PagoResponse,
     PagoSaldoCreate,
     PagoSaldoResponse,
+    PazYSalvoResponse,
 )
 from app.core.respuesta import RespuestaApi, respuesta_ok
 from app.repositories.cliente_repository import cliente_repository
@@ -64,3 +65,17 @@ def registrar_saldo(datos: PagoSaldoCreate):
     """Registra el saldo del pedido. Admite abonos parciales sin superar lo pendiente."""
     pago, mensaje = service.registrar_saldo(datos)
     return respuesta_ok(mensaje, pago)
+
+# ── GET /api/pagos/{idPedido}/estado — HU-013 ─────────────────
+@router.get(
+    "/{idPedido}/estado",
+    response_model=RespuestaApi[PazYSalvoResponse],
+    responses={
+        400: {"description": "Identificador de pedido no numérico"},
+        503: {"description": "Falla del almacenamiento"},
+    },
+)
+def validar_paz_y_salvo(idPedido: str = Path(..., description="ID del pedido")):
+    """Indica si el pedido está a paz y salvo (sin saldo pendiente)."""
+    resultado = service.consultar_paz_y_salvo(idPedido)
+    return respuesta_ok("El pedido está a paz y salvo", resultado)

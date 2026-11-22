@@ -85,6 +85,14 @@ class PagoSaldoResponse(BaseModel):
     estadoPedido: str
     saldoPendiente: int
 
+# ── Schema de SALIDA de HU-013 (paz y salvo) ──────────────────
+class PazYSalvoResponse(BaseModel):
+    idPedido: int
+    valorTotal: int
+    totalPagado: int
+    saldoPendiente: int
+    pazYSalvo: bool
+
 
 # ── Objeto de valor: resumen de lo pagado de un pedido ────────
 @dataclass(frozen=True)
