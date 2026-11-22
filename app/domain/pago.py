@@ -17,6 +17,9 @@ TIPO_ANTICIPO = "ANTICIPO"
 ESTADO_PAGO_ABONADO = "ABONADO"   # el acumulado ya alcanzó el 50%
 ESTADO_PAGO_PARCIAL = "PARCIAL"   # aún no alcanza el 50%
 ESTADO_PEDIDO_CANCELADO = "CANCELADO"
+TIPO_SALDO_FINAL = "SALDO_FINAL"
+# Situación financiera del pedido (no es un estado de la secuencia RN-06)
+ESTADO_PEDIDO_PAGADO_TOTAL = "PAGADO_TOTAL"
 
 
 # ── Utilidades de formato para los mensajes ───────────────────
@@ -59,6 +62,28 @@ class PagoResponse(BaseModel):
     monto: int
     tipo: str
     estadoPago: str
+
+# ── Schema de ENTRADA del saldo final (no lleva comprobante) ──
+class PagoSaldoCreate(BaseModel):
+    idPedido: int = Field(..., gt=0, description="ID del pedido")
+    monto: int = Field(..., description="Valor del saldo pagado, en pesos enteros")
+
+    @field_validator("monto")
+    @classmethod
+    def monto_positivo(cls, v: int) -> int:
+        if v <= 0:  # RN-19
+            raise ValueError("El monto debe ser mayor a cero")
+        return v
+
+
+# ── Schema de SALIDA del saldo final ──────────────────────────
+class PagoSaldoResponse(BaseModel):
+    idPago: int
+    idPedido: int
+    monto: int
+    tipo: str
+    estadoPedido: str
+    saldoPendiente: int
 
 
 # ── Objeto de valor: resumen de lo pagado de un pedido ────────
