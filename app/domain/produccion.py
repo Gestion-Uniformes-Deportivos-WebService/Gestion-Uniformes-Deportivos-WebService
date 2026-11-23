@@ -11,6 +11,11 @@ class EstadoOrden(str, Enum):
     EN_PRODUCCION = "EN_PRODUCCION"
 
 
+class ResultadoInspeccion(str, Enum):
+    APROBADO = "APROBADO"
+    RECHAZADO = "RECHAZADO"
+
+
 def calcular_unidades_por_dia(cantidad: int, fecha_inicio: date, fecha_fin: date) -> int:
     dias = (fecha_fin - fecha_inicio).days + 1
     return ceil(cantidad / dias)
@@ -52,6 +57,23 @@ class OrdenProduccion:
     def solapa_con(self, inicio: date, fin: date) -> bool:
         return self.fecha_inicio <= fin and inicio <= self.fecha_fin
 
+    def validar_lote_para_inspeccion(self) -> None:
+        # RN-28: solo se inspecciona un lote de prendas terminadas
+        if self.prendas_terminadas <= 0:
+            raise ReglaNegocioError(
+                "No hay un lote de prendas terminadas para inspeccionar",
+                {"idOrden": self.id, "prendasTerminadas": self.prendas_terminadas},
+            )
+
+
+class InspeccionCalidad:
+    def __init__(self, id: int, id_orden: int, resultado: ResultadoInspeccion,
+                 prendas_inspeccionadas: int):
+        self.id = id
+        self.id_orden = id_orden
+        self.resultado = resultado
+        self.prendas_inspeccionadas = prendas_inspeccionadas
+
 
 class OrdenProduccionRequest(BaseModel):
     idPedido: int
@@ -73,3 +95,15 @@ class OrdenProduccionResponse(BaseModel):
     fechaInicio: date
     fechaFin: date
     estado: EstadoOrden
+
+
+class InspeccionRequest(BaseModel):
+    idOrden: int
+    resultado: ResultadoInspeccion
+
+
+class InspeccionResponse(BaseModel):
+    idInspeccion: int
+    idOrden: int
+    resultado: ResultadoInspeccion
+    prendasInspeccionadas: int
