@@ -29,6 +29,9 @@ class Insumo:
             )
         self.stock -= cantidad
 
+    def tiene_stock(self) -> bool:
+        return self.stock > 0
+
 
 class MovimientoInventario:
     def __init__(self, id: int, insumo: str, tipo: TipoMovimiento,
@@ -52,3 +55,14 @@ class MovimientoResponse(BaseModel):
     tipo: TipoMovimiento
     cantidad: int
     saldoDisponible: int
+
+
+class InsumoStock(BaseModel):
+    insumo: str
+    stock: int
+
+
+class DisponibilidadResponse(BaseModel):
+    disponible: bool
+    insumos: Optional[list[InsumoStock]] = None
+    faltantes: Optional[list[InsumoStock]] = None
