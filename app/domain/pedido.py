@@ -16,8 +16,18 @@ from app.domain.cliente import Cliente
 CANTIDAD_MINIMA_DEFAULT = 6
 ESTADO_PENDIENTE_ANTICIPO = "PENDIENTE_ANTICIPO"
 COSTO_UNITARIO_DEFAULT = 45_000  # tarifa base por unidad, si no hay parámetro
-ESTADOS_NO_MODIFICABLES = ("EN_PRODUCCION", "LISTO_PARA_DESPACHO", "ENTREGADO") # RN-03: en estos estados el pedido ya no puede modificarse
+# RN-03: en estos estados el pedido ya no puede modificarse
+ESTADOS_NO_MODIFICABLES = ("EN_PRODUCCION", "LISTO_PARA_DESPACHO", "ENTREGADO")
 
+
+# ── Validación del id de pedido recibido por la ruta ─────────
+# (función de módulo: va FUERA de cualquier clase, sin sangría)
+def validar_id_pedido(valor: str) -> int:
+    """El id llega como texto en la URL; debe ser un número entero positivo."""
+    valor = (valor or "").strip()
+    if not valor.isdigit() or int(valor) <= 0:
+        raise ValueError("Identificador de pedido no válido. Debe ser numérico")
+    return int(valor)
 
 
 # ── Schemas de ENTRADA ────────────────────────────────────────
@@ -43,13 +53,14 @@ class PedidoCreate(BaseModel):
     cantidad: int = Field(..., gt=0, description="Total de unidades del pedido")
 
 
-# ── Schema de SALIDA ──────────────────────────────────────────
+# ── Schemas de SALIDA ─────────────────────────────────────────
 class PedidoResponse(BaseModel):
     idPedido: int
     idCliente: int
     cantidad: int
     estado: str
     esquemaPago: str
+
 
 class CotizacionResponse(BaseModel):
     idPedido: int
@@ -70,7 +81,7 @@ class EsquemaDePago:
         if self.anticipo != 50 or self.saldo != 50:
             raise ValueError("El pago debe dividirse en 50% de anticipo y 50% de saldo")
 
-        # RN-50: el anticipo y el saldo se recalculan cuando cambia el valor total
+    # RN-50: el anticipo y el saldo se recalculan cuando cambia el valor total
     def recalcular(self, costo_total: int) -> tuple[int, int]:
         self.validar()  # RN-14: siempre 50/50
         anticipo = costo_total * self.anticipo // 100
@@ -106,14 +117,18 @@ class Pedido:
             )
 
     def calcular_costo_total(self, costo_unitario: int) -> int:
-            return self.cantidad * costo_unitario
+        return self.cantidad * costo_unitario
 
-        # RN-03: un pedido no puede modificarse una vez esté en producción
+    # RN-03: un pedido no puede modificarse una vez esté en producción
     def validar_modificable(self) -> None:
         if self.estado in ESTADOS_NO_MODIFICABLES:
             raise ValueError(
                 f"El pedido no puede modificarse porque está en estado {self.estado}"
             )
+
+    # RN-16: no se genera guía de despacho sin saldo final pagado
+    def tiene_paz_y_salvo(self, saldo_pendiente: int) -> bool:
+        return saldo_pendiente == 0
 
     def to_response(self) -> dict:
         return {
@@ -123,12 +138,3 @@ class Pedido:
             "estado": self.estado,
             "esquemaPago": str(self.esquema_pago),
         }
-    
-    # ── Validación del id de pedido recibido por la ruta ─────────
-def validar_id_pedido(valor: str) -> int:
-    """El id llega como texto en la URL; debe ser un número entero positivo."""
-    valor = (valor or "").strip()
-    if not valor.isdigit() or int(valor) <= 0:
-        raise ValueError("Identificador de pedido no válido. Debe ser numérico")
-    return int(valor)
-
