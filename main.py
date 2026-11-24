@@ -17,6 +17,8 @@ from app.api.inventario_router import router as inventario_router
 from app.api.produccion_router import router as produccion_router
 from app.api.calidad_router import router as calidad_router
 from app.api.pago_router import router as pago_router
+from app.api.despacho_router import router as despacho_router
+
 from app.core.responses import manejar_error_dominio, manejar_validacion
 from app.core.manejadores import registrar_manejadores
 from app.domain.errores import ErrorDominio
@@ -45,6 +47,7 @@ app.include_router(inventario_router)
 app.include_router(produccion_router)
 app.include_router(calidad_router)
 app.include_router(pago_router)
+app.include_router(despacho_router)
 @app.get("/")
 def root():
     return {
