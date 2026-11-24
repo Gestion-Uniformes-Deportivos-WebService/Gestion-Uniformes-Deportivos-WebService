@@ -18,6 +18,7 @@ ESTADO_PENDIENTE_ANTICIPO = "PENDIENTE_ANTICIPO"
 COSTO_UNITARIO_DEFAULT = 45_000  # tarifa base por unidad, si no hay parámetro
 # RN-03: en estos estados el pedido ya no puede modificarse
 ESTADOS_NO_MODIFICABLES = ("EN_PRODUCCION", "LISTO_PARA_DESPACHO", "ENTREGADO")
+ESTADO_EN_PRODUCCION = "EN_PRODUCCION"
 
 
 # ── Validación del id de pedido recibido por la ruta ─────────
@@ -125,6 +126,13 @@ class Pedido:
             raise ValueError(
                 f"El pedido no puede modificarse porque está en estado {self.estado}"
             )
+
+    # RN-07: no se autoriza producción si el diseño no está DISEÑO_APROBADO
+    def autorizar_produccion(self, diseno_aprobado: bool) -> str:
+        """Valida RN-07 y devuelve el estado destino (el servicio lo persiste)."""
+        if not diseno_aprobado:
+            raise ValueError("No se puede autorizar producción: el diseño no está aprobado")
+        return ESTADO_EN_PRODUCCION
 
     # RN-16: no se genera guía de despacho sin saldo final pagado
     def tiene_paz_y_salvo(self, saldo_pendiente: int) -> bool:

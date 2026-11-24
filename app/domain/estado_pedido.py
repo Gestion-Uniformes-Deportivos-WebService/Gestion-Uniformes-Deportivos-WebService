@@ -7,7 +7,7 @@
 
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── Schema de SALIDA (data del JSON) ──────────────────────────
@@ -65,3 +65,24 @@ class EstadoPedido:
         if not cls.es_valido(estado):
             raise ValueError(f"El estado '{estado}' no pertenece a la secuencia del pedido")
         return dict(cls.DETALLE_POR_ESTADO[estado])
+
+# ── HU-003: schemas del cambio de estado ──────────────────────
+class PedidoEstadoUpdate(BaseModel):
+    nuevoEstado: str = Field(..., description="Estado destino (EN_PRODUCCION)")
+
+    @field_validator("nuevoEstado")
+    @classmethod
+    def estado_permitido(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not EstadoPedido.es_valido(v):
+            raise ValueError(
+                "Estado no válido. Estados permitidos: " + ", ".join(EstadoPedido.SECUENCIA)
+            )
+        return v
+
+
+class AutorizacionProduccionResponse(BaseModel):
+    idPedido: int
+    estadoAnterior: str
+    estadoNuevo: str
+    areaNotificada: str

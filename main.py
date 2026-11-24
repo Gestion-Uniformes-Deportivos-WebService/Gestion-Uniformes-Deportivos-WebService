@@ -1,7 +1,7 @@
 # 
 # ─────────────────────────────────────────────────────────────
 # PUNTO DE ENTRADA — ejecutar desde la raíz del proyecto:
-#   uvicorn app.main:app --reload
+#   uvicorn main:app --reload
 # ─────────────────────────────────────────────────────────────
 
 from fastapi import FastAPI
@@ -16,6 +16,7 @@ from app.api.ficha_tecnica_router import router as ficha_tecnica_router
 from app.api.inventario_router import router as inventario_router
 from app.api.produccion_router import router as produccion_router
 from app.api.calidad_router import router as calidad_router
+from app.api.pago_router import router as pago_router
 from app.api.despacho_router import router as despacho_router
 
 from app.core.responses import manejar_error_dominio, manejar_validacion
@@ -45,6 +46,7 @@ app.include_router(ficha_tecnica_router)
 app.include_router(inventario_router)
 app.include_router(produccion_router)
 app.include_router(calidad_router)
+app.include_router(pago_router)
 app.include_router(despacho_router)
 @app.get("/")
 def root():

@@ -171,6 +171,11 @@ class Pago:
         if self.monto > valor_pendiente:
             raise ValueError("El monto supera el valor pendiente del pedido")
 
+    # RN-15: no se autoriza producción sin el anticipo del 50% verificado
+    @staticmethod
+    def anticipo_verificado(resumen: ResumenPago) -> bool:
+        return resumen.anticipo_completo()
+
     def to_response(self) -> dict:
         return {
             "idPago": self.id,

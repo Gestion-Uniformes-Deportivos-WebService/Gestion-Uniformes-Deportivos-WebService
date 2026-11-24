@@ -5,13 +5,20 @@
 
 from fastapi import APIRouter, Path, status
 
+from app.domain.estado_pedido import (
+    AutorizacionProduccionResponse,
+    EstadoPedidoResponse,
+    PedidoEstadoUpdate,
+)
+from app.repositories.diseno_repo import diseno_repository
+from app.repositories.ficha_tecnica_repository import ficha_tecnica_repository
+from app.services.autorizacion_produccion_service import AutorizacionProduccionService
 from app.domain.pedido import CotizacionResponse, PedidoCreate, PedidoResponse
 from app.core.respuesta import RespuestaApi, respuesta_ok
 from app.repositories.cliente_repository import cliente_repository
 from app.repositories.parametro_repository import parametro_repository
 from app.repositories.pedido_repository import pedido_repository
 from app.services.pedido_service import PedidoService
-from app.domain.estado_pedido import EstadoPedidoResponse
 from app.repositories.pago_repository import pago_repository
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos (MOD-01)"])
@@ -21,6 +28,14 @@ service = PedidoService(
     clientes=cliente_repository,
     parametros=parametro_repository,
     pagos=pago_repository,
+)
+
+autorizacion_service = AutorizacionProduccionService(
+    pedidos=pedido_repository,
+    pagos=pago_repository,
+    fichas=ficha_tecnica_repository,
+    disenos=diseno_repository,
+    pedido_service=service,
 )
 
 
@@ -69,3 +84,21 @@ def consultar_estado_pedido(id: str = Path(..., description="ID del pedido")):
     """Retorna la etapa actual del pedido: estado, pago, producción y despacho."""
     estado, mensaje = service.consultar_estado(id)
     return respuesta_ok(mensaje, estado)
+
+# ── PUT /api/pedidos/{id}/estado — HU-003 ─────────────────────
+@router.put(
+    "/{id}/estado",
+    response_model=RespuestaApi[AutorizacionProduccionResponse],
+    responses={
+        400: {"description": "Identificador o estado no válido"},
+        409: {"description": "Regla incumplida (RN-06, RN-15, RN-04, RN-07)"},
+        503: {"description": "Falla del almacenamiento"},
+    },
+)
+def autorizar_produccion(
+    datos: PedidoEstadoUpdate,
+    id: str = Path(..., description="ID del pedido"),
+):
+    """Autoriza el pase a producción del pedido y notifica al área de confección."""
+    resultado = autorizacion_service.autorizar(id, datos)
+    return respuesta_ok("Pedido autorizado para producción", resultado)
