@@ -28,6 +28,14 @@ class PedidoRepository:
         self._datos.append(nuevo)
         self._siguiente_id += 1
         return nuevo
+
+    def actualizar_estado(self, id: int, nuevo_estado: str) -> Optional[Pedido]:
+        """Cambia el estado del pedido y lo devuelve (None si no existe)."""
+        pedido = self.obtener_por_id(id)
+        if pedido is None:
+            return None
+        pedido.estado = nuevo_estado
+        return pedido
     
 
 
