@@ -1,7 +1,8 @@
+from enum import Enum
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from app.domain.errores import ReglaNegocioError
+from app.domain.errores import ReglaNegocioError, ValidacionDominioError
 
 
 class ItemEmpaque:
@@ -38,6 +39,14 @@ class Empaque:
         # RN-39: el empaque debe coincidir con la orden
         return not self.faltantes()
 
+    def validar_completo(self) -> None:
+        # RN-42: un pedido con faltantes no pasa a despacho
+        if not self.esta_completo():
+            raise ReglaNegocioError(
+                "No se puede generar la guía: el pedido tiene faltantes",
+                {"idPedido": self.id_pedido, "faltantes": self.faltantes()},
+            )
+
     def validar_sin_no_conformidades(self) -> None:
         # RN-29: una prenda con no conformidad no se despacha hasta cerrar el reproceso
         if self.no_conformidades_abiertas > 0:
@@ -49,6 +58,53 @@ class Empaque:
 
     def marcar_listo_para_despacho(self) -> None:
         self.estado = "LISTO_PARA_DESPACHO"
+
+
+class PedidoDespacho:
+    """Datos del pedido necesarios para despachar (simulados hasta integrar los módulos de pedidos y pagos)."""
+
+    def __init__(self, id: int, saldo_pendiente: int, zona_destino: str):
+        self.id = id
+        self.saldo_pendiente = saldo_pendiente
+        self.zona_destino = zona_destino
+
+    def validar_paz_y_salvo(self) -> None:
+        # RN-38 y RN-16: no se genera guía sin el saldo final pagado
+        if self.saldo_pendiente > 0:
+            raise ReglaNegocioError(
+                "No se puede generar la guía: el pedido no tiene el saldo final pagado",
+                {"idPedido": self.id, "saldoPendiente": self.saldo_pendiente},
+            )
+
+
+class Transportadora:
+    def __init__(self, nombre: str, zonas: set[str], activa: bool = True):
+        self.nombre = nombre
+        self.zonas = zonas
+        self.activa = activa
+
+    def validar_para_zona(self, zona: str) -> None:
+        # RN-40: solo se usa una transportadora habilitada para la zona de destino
+        if not self.activa or zona not in self.zonas:
+            raise ValidacionDominioError(
+                "La transportadora no está habilitada para la zona de destino",
+                {"transportadora": self.nombre, "zonaDestino": zona},
+            )
+
+
+class EstadoDespacho(str, Enum):
+    GUIA_GENERADA = "GUIA_GENERADA"
+    ENTREGADO = "ENTREGADO"
+
+
+class Despacho:
+    def __init__(self, id: int, id_pedido: int, transportadora: str, guia: str,
+                 estado: EstadoDespacho = EstadoDespacho.GUIA_GENERADA):
+        self.id = id
+        self.id_pedido = id_pedido
+        self.transportadora = transportadora
+        self.guia = guia
+        self.estado = estado
 
 
 class FaltanteItem(BaseModel):
@@ -63,3 +119,16 @@ class VerificacionResponse(BaseModel):
     completo: bool
     estado: Optional[str] = None
     faltantes: Optional[list[FaltanteItem]] = None
+
+
+class DespachoRequest(BaseModel):
+    idPedido: int
+    transportadora: str = Field(..., min_length=1)
+
+
+class DespachoResponse(BaseModel):
+    idDespacho: int
+    idPedido: int
+    transportadora: str
+    guia: str
+    estado: EstadoDespacho
