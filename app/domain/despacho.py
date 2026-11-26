@@ -1,3 +1,4 @@
+from datetime import date
 from enum import Enum
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -99,12 +100,34 @@ class EstadoDespacho(str, Enum):
 
 class Despacho:
     def __init__(self, id: int, id_pedido: int, transportadora: str, guia: str,
-                 estado: EstadoDespacho = EstadoDespacho.GUIA_GENERADA):
+                 estado: EstadoDespacho = EstadoDespacho.GUIA_GENERADA,
+                 fecha_entrega: Optional[date] = None,
+                 firma: Optional[str] = None):
         self.id = id
         self.id_pedido = id_pedido
         self.transportadora = transportadora
         self.guia = guia
         self.estado = estado
+        self.fecha_entrega = fecha_entrega
+        self.firma = firma
+
+    def confirmar_entrega(self, fecha: date, firma: Optional[str]) -> None:
+        # RN-06: el estado solo avanza en secuencia; un despacho entregado no se vuelve a entregar
+        if self.estado == EstadoDespacho.ENTREGADO:
+            raise ReglaNegocioError(
+                "El despacho ya fue entregado",
+                {"guia": self.guia,
+                 "fechaEntrega": self.fecha_entrega.isoformat() if self.fecha_entrega else None},
+            )
+        # RN-41: no se confirma ENTREGADO sin fecha y firma de recepción
+        if not firma or not firma.strip():
+            raise ValidacionDominioError(
+                "No se puede confirmar la entrega sin fecha y firma de recepción",
+                {"guia": self.guia},
+            )
+        self.estado = EstadoDespacho.ENTREGADO
+        self.fecha_entrega = fecha
+        self.firma = firma.strip()
 
 
 class FaltanteItem(BaseModel):
@@ -131,4 +154,94 @@ class DespachoResponse(BaseModel):
     idPedido: int
     transportadora: str
     guia: str
+    estado: EstadoDespacho
+
+
+class ConfirmarEntregaRequest(BaseModel):
+    fecha: date
+    firma: Optional[str] = None
+
+from datetime import date
+from typing import Optional
+from app.domain.despacho import (
+    Despacho, Empaque, EstadoDespacho, ItemEmpaque, Transportadora,
+)
+
+
+class DespachoRepository:
+
+    def __init__(self):
+        self._empaques: dict[int, Empaque] = {}
+        self._transportadoras: dict[str, Transportadora] = {}
+        self._despachos: dict[str, Despacho] = {}   # clave: número de guía
+        self._siguiente_id = 15
+        self._siguiente_guia = 1
+        self._seed()
+
+    def _seed(self):
+        empaques = [
+            # Pedido completo
+            Empaque(1024, [ItemEmpaque("Camiseta M", 12, 12), ItemEmpaque("Short M", 12, 12)]),
+            # Pedido con faltantes
+            Empaque(1026, [ItemEmpaque("Camiseta M #7", 12, 11), ItemEmpaque("Short L #10", 12, 11)]),
+            # Pedido con una no conformidad abierta
+            Empaque(1027, [ItemEmpaque("Camiseta L", 12, 12)], no_conformidades_abiertas=1),
+            # Pedidos completos para probar la guía
+            Empaque(1028, [ItemEmpaque("Camiseta S", 12, 12)]),
+            Empaque(1030, [ItemEmpaque("Camiseta XL", 12, 12)]),
+        ]
+        self._empaques = {e.id_pedido: e for e in empaques}
+
+        transportadoras = [
+            Transportadora("Transportadora Andina", {"SANTANDER", "BOGOTA", "ANTIOQUIA"}),
+            Transportadora("Envios Costa", {"ATLANTICO", "BOLIVAR"}),
+        ]
+        self._transportadoras = {t.nombre: t for t in transportadoras}
+
+        # Despachos de ejemplo para probar la confirmación de entrega
+        despachos = [
+            Despacho(10, 1050, "Transportadora Andina", "GU-2026-0100"),
+            Despacho(11, 1051, "Envios Costa", "GU-2026-0101",
+                     EstadoDespacho.ENTREGADO, date(2026, 11, 5), "Ana Gómez"),
+        ]
+        self._despachos = {d.guia: d for d in despachos}
+
+    # ---- empaque (HU-030)
+    def obtener_por_pedido(self, id_pedido: int) -> Optional[Empaque]:
+        return self._empaques.get(id_pedido)
+
+    def guardar(self, empaque: Empaque) -> Empaque:
+        self._empaques[empaque.id_pedido] = empaque
+        return empaque
+
+    # ---- transportadoras y guías (HU-029)
+    def obtener_transportadora(self, nombre: str) -> Optional[Transportadora]:
+        return self._transportadoras.get(nombre)
+
+    def obtener_despacho_por_pedido(self, id_pedido: int) -> Optional[Despacho]:
+        return next((d for d in self._despachos.values() if d.id_pedido == id_pedido), None)
+
+    def crear_despacho(self, id_pedido: int, transportadora: str) -> Despacho:
+        guia = f"GU-{date.today().year}-{self._siguiente_guia:04d}"
+        despacho = Despacho(self._siguiente_id, id_pedido, transportadora, guia)
+        self._despachos[guia] = despacho
+        self._siguiente_id += 1
+        self._siguiente_guia += 1
+        return despacho
+
+    # ---- entrega (HU-032)
+    def obtener_despacho_por_guia(self, guia: str) -> Optional[Despacho]:
+        return self._despachos.get(guia)
+
+    def guardar_despacho(self, despacho: Despacho) -> Despacho:
+        self._despachos[despacho.guia] = despacho
+        return despacho
+
+
+# Instancia única compartida
+despacho_repository = DespachoRepository()
+class EntregaResponse(BaseModel):
+    guia: str
+    idPedido: int
+    fechaEntrega: date
     estado: EstadoDespacho
