@@ -1,7 +1,10 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Path, status
 
 from app.core.responses import RespuestaApi
-from app.domain.despacho import DespachoRequest, DespachoResponse, VerificacionResponse
+from app.domain.despacho import (
+    ConfirmarEntregaRequest, DespachoRequest, DespachoResponse,
+    EntregaResponse, VerificacionResponse,
+)
 from app.repositories.despacho_repo import despacho_repository
 from app.repositories.pedido_despacho_stub_repo import pedido_despacho_stub_repository
 from app.services.despacho_service import DespachoService
@@ -34,3 +37,16 @@ def verificar_pedido_completo(idPedido: int):
                 "data": resultado, "success": True}
     return {"mensaje": "El pedido tiene faltantes y no puede pasar a despacho",
             "data": resultado, "success": False}
+
+
+@router.put(
+    "/{guia}/entrega",
+    response_model=RespuestaApi[EntregaResponse],
+)
+def confirmar_entrega_del_pedido(
+    datos: ConfirmarEntregaRequest,
+    guia: str = Path(..., pattern=r"^GU-\d{4}-\d{4}$"),
+):
+    """HU-032: registra la recepción del pedido por parte del cliente."""
+    resultado = service.confirmar_entrega(guia, datos)
+    return {"mensaje": "Entrega confirmada exitosamente", "data": resultado, "success": True}

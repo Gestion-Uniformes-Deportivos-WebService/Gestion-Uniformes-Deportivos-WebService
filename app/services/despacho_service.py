@@ -1,5 +1,6 @@
 from app.domain.despacho import (
-    DespachoRequest, DespachoResponse, FaltanteItem, VerificacionResponse,
+    ConfirmarEntregaRequest, DespachoRequest, DespachoResponse,
+    EntregaResponse, FaltanteItem, VerificacionResponse,
 )
 from app.domain.errores import RecursoNoEncontradoError, ReglaNegocioError
 from app.repositories.despacho_repo import DespachoRepository
@@ -76,4 +77,22 @@ class DespachoService:
             idDespacho=despacho.id, idPedido=despacho.id_pedido,
             transportadora=despacho.transportadora, guia=despacho.guia,
             estado=despacho.estado,
+        )
+
+    # ---------------- HU-032
+    def confirmar_entrega(self, guia: str, datos: ConfirmarEntregaRequest) -> EntregaResponse:
+        despacho = self.repo.obtener_despacho_por_guia(guia)
+        if not despacho:
+            raise RecursoNoEncontradoError(
+                "La guía indicada no existe", {"guia": guia}
+            )
+
+        despacho.confirmar_entrega(datos.fecha, datos.firma)   # RN-41 y RN-06
+        self.repo.guardar_despacho(despacho)
+
+        # La actualización del estado del pedido (módulo de pedidos) se simula:
+        # aquí solo cambia el estado del despacho.
+        return EntregaResponse(
+            guia=despacho.guia, idPedido=despacho.id_pedido,
+            fechaEntrega=despacho.fecha_entrega, estado=despacho.estado,
         )
